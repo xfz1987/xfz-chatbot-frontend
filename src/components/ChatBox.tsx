@@ -1,56 +1,74 @@
-import { useState } from 'react';
-import { useMutation } from '@apollo/client/react';
-import { SEND_MESSAGE } from '../graphql/mutations';
-import './ChatBox.css';
+import { useState } from "react";
+import { useMutation } from "@apollo/client/react";
+import { SEND_MESSAGE } from "../graphql/mutations";
+import "./ChatBox.css";
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: string;
 }
 
+interface ChatResponse {
+  chat: {
+    message: string;
+    timestamp: string;
+  };
+}
+
+interface ChatVariables {
+  message: string;
+}
+
 export default function ChatBox() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [sendMessage, { loading, error }] = useMutation(SEND_MESSAGE);
+  const [inputValue, setInputValue] = useState("");
+  const [sendMessage, { loading, error }] = useMutation<
+    ChatResponse,
+    ChatVariables
+  >(SEND_MESSAGE);
 
   const handleSend = async () => {
     if (!inputValue.trim()) return;
 
     const userMessage: Message = {
-      role: 'user',
+      role: "user",
       content: inputValue,
       timestamp: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setInputValue('');
+    setInputValue("");
 
     try {
-      console.log('Sending message:', inputValue);
+      console.log("Sending message:", inputValue);
       const { data } = await sendMessage({
         variables: { message: inputValue },
       });
 
-      console.log('Response data:', data);
+      console.log("Response data:", data);
       if (data?.chat) {
         const aiMessage: Message = {
-          role: 'assistant',
+          role: "assistant",
           content: data.chat.message,
           timestamp: data.chat.timestamp,
         };
         setMessages((prev) => [...prev, aiMessage]);
       }
-    } catch (err: any) {
-      console.error('Failed to send message:', err);
-      console.error('Error details:', {
-        message: err.message,
-        networkError: err.networkError,
-        graphQLErrors: err.graphQLErrors,
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      const error = err as Error & {
+        networkError?: Error;
+        graphQLErrors?: Array<{ message: string }>;
+      };
+      console.error("Error details:", {
+        message: error.message,
+        networkError: error.networkError,
+        graphQLErrors: error.graphQLErrors,
       });
       const errorMessage: Message = {
-        role: 'assistant',
-        content: `抱歉，发送消息失败: ${err.message || '未知错误'}`,
+        role: "assistant",
+        content: `抱歉，发送消息失败: ${error.message || "未知错误"}`,
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -58,7 +76,7 @@ export default function ChatBox() {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -80,11 +98,13 @@ export default function ChatBox() {
           messages.map((msg, index) => (
             <div
               key={index}
-              className={`message ${msg.role === 'user' ? 'user-message' : 'ai-message'}`}
+              className={`message ${
+                msg.role === "user" ? "user-message" : "ai-message"
+              }`}
             >
               <div className="message-header">
                 <span className="message-role">
-                  {msg.role === 'user' ? '👤 你' : '🤖 AI'}
+                  {msg.role === "user" ? "👤 你" : "🤖 AI"}
                 </span>
                 <span className="message-time">
                   {new Date(msg.timestamp).toLocaleTimeString()}
@@ -106,11 +126,7 @@ export default function ChatBox() {
             </div>
           </div>
         )}
-        {error && (
-          <div className="error-message">
-            ❌ 错误: {error.message}
-          </div>
-        )}
+        {error && <div className="error-message">❌ 错误: {error.message}</div>}
       </div>
 
       <div className="input-container">
@@ -123,7 +139,7 @@ export default function ChatBox() {
           rows={3}
         />
         <button onClick={handleSend} disabled={loading || !inputValue.trim()}>
-          {loading ? '发送中...' : '发送'}
+          {loading ? "发送中..." : "发送"}
         </button>
       </div>
     </div>
